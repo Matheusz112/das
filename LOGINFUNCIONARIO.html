@@ -40,9 +40,29 @@
     <video id="webcam" autoplay></video>
     <canvas id="output" width="640" height="480"></canvas>
 
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
+
     <script>
-        // Acesse a webcam
-        navigator.mediaDevices.getUserMedia({ video: true })
+        // Acesse a câmera traseira
+        navigator.mediaDevices.enumerateDevices()
+            .then(devices => {
+                // Encontre a câmera traseira (a segunda câmera)
+                const rearCamera = devices.find(device => device.kind === 'videoinput' && device.label.includes('back'));
+
+                // Se uma câmera traseira for encontrada, use-a, caso contrário, use a primeira câmera disponível
+                const selectedCamera = rearCamera || devices.find(device => device.kind === 'videoinput');
+
+                if (selectedCamera) {
+                    const constraints = {
+                        video: { deviceId: { exact: selectedCamera.deviceId } }
+                    };
+
+                    return navigator.mediaDevices.getUserMedia(constraints);
+                } else {
+                    throw new Error('Nenhuma câmera encontrada.');
+                }
+            })
             .then((stream) => {
                 const video = document.getElementById('webcam');
                 video.srcObject = stream;
@@ -103,9 +123,5 @@
             detectFrame();
         }
     </script>
-
-    <!-- Importe a biblioteca TensorFlow.js e o modelo pré-treinado -->
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
 </body>
 </html>
