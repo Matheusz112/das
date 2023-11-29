@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detecção de Objetos na Webcam</title>
+    <style>
+        body {
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            flex-direction: column;
+            position: relative;
+        }
+
+        video, canvas {
+            position: absolute;
+        }
+
+        video {
+            max-width: 100%;
+            height: auto;
+            z-index: 1;
+        }
+
+        canvas {
+            margin-top: 10px;
+            z-index: 2;
+        }
+
+        p {
+            margin: 5px 0;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+    <video id="webcam" autoplay></video>
+    <canvas id="output" width="640" height="480"></canvas>
+
+    <script>
+        // Acesse a webcam
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then((stream) => {
+                const video = document.getElementById('webcam');
+                video.srcObject = stream;
+
+                // Carregue o modelo de detecção de objetos (pode exigir conexão com a internet)
+                cocoSsd.load().then(model => {
+                    detectObjects(model);
+                });
+            })
+            .catch((error) => {
+                console.error('Erro ao acessar a webcam:', error);
+            });
+
+        // Detecta objetos na webcam
+        function detectObjects(model) {
+            const video = document.getElementById('webcam');
+            const canvas = document.getElementById('output');
+            const context = canvas.getContext('2d');
+
+            // Executa a detecção a cada quadro da webcam
+            async function detectFrame() {
+                const predictions = await model.detect(video);
+
+                // Desenha as previsões no canvas
+                context.clearRect(0, 0, canvas.width, canvas.height);
+
+                predictions.forEach(prediction => {
+                    context.beginPath();
+                    context.rect(
+                        prediction.bbox[0],
+                        prediction.bbox[1],
+                        prediction.bbox[2],
+                        prediction.bbox[3]
+                    );
+                    context.lineWidth = 2;
+                    context.strokeStyle = 'green';  // Cor verde para a caixa
+                    context.fillStyle = 'transparent';
+                    context.stroke();
+
+                    // Adiciona o nome do objeto no centro da caixa delimitadora
+                    const textX = prediction.bbox[0] + prediction.bbox[2] / 2;
+                    const textY = prediction.bbox[1] + prediction.bbox[3] / 2;
+
+                    context.fillStyle = 'white';
+                    context.font = '18px Arial';
+                    context.fillText(
+                        `${prediction.class} (${Math.round(prediction.score * 100)}%)`,
+                        textX,
+                        textY
+                    );
+                });
+
+                // Chama a próxima detecção no próximo quadro
+                requestAnimationFrame(detectFrame);
+            }
+
+            // Inicie a detecção
+            detectFrame();
+        }
+    </script>
+
+    <!-- Importe a biblioteca TensorFlow.js e o modelo pré-treinado -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
+</body>
+</html>
